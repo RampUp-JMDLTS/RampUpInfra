@@ -26,4 +26,10 @@ provider "aws" {
   shared_credentials_files = ["~/.aws/credentials"]
   profile                  = "terraform-user"
   region                   = "us-east-1"
+
+  default_tags {
+    tags = {
+      Environment = "${terraform.workspace}"
+    }
+  }
 }

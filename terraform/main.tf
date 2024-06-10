@@ -53,6 +53,9 @@ module "database" {
   db_allocated_storage    = 10
   db_parameter_group_name = "default.mysql5.7"
 
+  vpc_id = module.network.vpc_id
+  vpc_cidr = module.network.vpc_cidr
+
   subnet_ids = [
     module.network.private_subnets["db"].id,
     module.network.private_subnets["backend2"].id # this one is because it needs at leat 2 subnets
@@ -128,6 +131,8 @@ module "vms" {
       subnet_id      = module.network.public_subnets["frontend1"].id
       security_group = aws_security_group.worker_ec2_sg.id
       key_name = aws_key_pair.key_pair.key_name
+      public_ipv4          = true
+      role = "worker"
     },
     {
       name           = "frontend2"
@@ -135,15 +140,26 @@ module "vms" {
       subnet_id      = module.network.public_subnets["frontend2"].id
       security_group = aws_security_group.worker_ec2_sg.id
       key_name = aws_key_pair.key_pair.key_name
+      public_ipv4          = true
+      role = "worker"
     },
     {
       name                 = "bastion"
-      instance_type        = "t2.micro"
+      instance_type        = "t2.medium"
       subnet_id            = module.network.public_subnets["bastion"].id
       security_group       = aws_security_group.bastion_ec2_sg.id
       iam_instance_profile = aws_iam_instance_profile.ssm_iam_profile.name
       public_ipv4          = true
       key_name = aws_key_pair.key_pair.key_name
+      user_data = <<-EOF
+        #!/bin/bash
+        echo "${tls_private_key.key_pair.private_key_pem}" > /home/ec2-user/.ssh/id_rsa
+        sudo dnf install git -y
+        sudo dnf install python3-pip -y
+        sudo pip install ansible
+        sudo pip install boto3
+      EOF
+      role = "master"
     },
     {
       name           = "backend1"
@@ -151,6 +167,7 @@ module "vms" {
       subnet_id      = module.network.private_subnets["backend1"].id
       security_group = aws_security_group.worker_ec2_sg.id
       key_name = aws_key_pair.key_pair.key_name
+      role = "worker"
     },
     {
       name           = "backend2"
@@ -158,6 +175,7 @@ module "vms" {
       subnet_id      = module.network.private_subnets["backend2"].id
       security_group = aws_security_group.worker_ec2_sg.id
       key_name = aws_key_pair.key_pair.key_name
+      role = "worker"
     },
     {
       name              = "nat"
@@ -165,6 +183,9 @@ module "vms" {
       subnet_id         = module.network.public_subnets["bastion"].id
       security_group    = aws_security_group.nat_ec2_sg.id
       source_dest_check = false
+      public_ipv4          = true
+      iam_instance_profile = aws_iam_instance_profile.ssm_iam_profile.name
+      user_data = file("../scripts/conf_nat.sh")
     }
   ]
 }

@@ -9,5 +9,7 @@ variable "allvms" {
     iam_instance_profile = optional(string)
     public_ipv4          = optional(bool)
     key_name             = optional(string)
+    user_data            = optional(string)
+    role                = optional(string)
   }))
 }

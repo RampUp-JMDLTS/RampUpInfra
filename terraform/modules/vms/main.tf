@@ -24,10 +24,11 @@ resource "aws_instance" "ec2" {
 
   key_name = each.value.key_name != null ? each.value.key_name : null
 
-  # user_data                   = file("./http_install.sh")
-  # user_data_replace_on_change = true
+  user_data                   = each.value.user_data != null ? each.value.user_data : null
+  user_data_replace_on_change = true
 
   tags = {
     Name = "epam_ec2_instance_${each.key}"
+    Role = "${each.value.role != null ? each.value.role : "none"}"
   }
 }
